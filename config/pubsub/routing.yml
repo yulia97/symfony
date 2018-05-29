@@ -1,0 +1,9 @@
+topic_xample:
+    channel: app/{mode}/{id}
+    handler:
+        callback: 'topic.xample'
+        requirements:
+            id:
+                pattern: "\\d+"
+            mode:
+                pattern: "group|message"

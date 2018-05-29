@@ -1,0 +1,261 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello {{ controller_name }}!{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+     <script type="text/javascript" src="{{ asset('bundles/goswebsocket/js/gos_web_socket_client.js') }}"></script>
+     <script type="text/javascript" src="{{ asset('bundles/goswebsocket/js/vendor/autobahn.min.js') }}"></script>
+
+
+    <script>
+     var group;
+     
+     
+     $(document).ready(function(){
+	 function showMessages(messages){
+	     var messagesBox = $('#messages')
+	     messagesBox.empty()
+	     messages.forEach(function(x){
+		 messagesBox.append('<div>'+x.author+': '+x.text+'</div>')
+		 
+	     })
+	     
+	 }
+	 
+	 function makeMessageLinks(){
+	     $("#group_list a").click(function(e){
+
+		 var chat = /#(\d+)/
+
+		 
+		 var groupId = e.target.href.match(chat)[1]
+		 $.get('/messages/'+groupId, function(data){
+		     console.log(data)
+		     showMessages(data)
+		     group = groupId;
+		     setWebSockets();
+		 })
+		 
+	     })
+	 }
+	 
+	 function setWebSockets(){
+	     
+	     var webSocket = WS.connect("ws://128.199.73.29:8080");
+
+	     webSocket.on("socket/connect", function(session){
+		 //session is an Autobahn JS WAMP session.
+		     console.log("Successfully Connected!");
+		 console.log("app/group/"+group)
+		 //the callback function in "subscribe" is called everytime an event is published in that channel.
+
+			 session.subscribe("app/group/"+group, function(uri, payload){
+			     console.log("Received message", payload.msg);
+			 });
+		 
+		 session.publish("app/group/"+group, "This is a message!");
+	     });
+	     
+	     webSocket.on("socket/disconnect", function(error){
+		 //error provides us with some insight into the disconnection: error.reason and error.code
+		 console.log("Disconnected for " + error.reason + " with code " + error.code);
+		 });/*
+	     webSocket.on("socket/connect", function(session){
+	
+		 session.subscribe("group/"+group, function(uri, payload){
+		     console.log("Received message", payload.msg);
+		 });
+		 console.log("Successfully Connected!");
+	     })
+	     
+	     webSocket.on("socket/disconnect", function(error){
+	
+	 
+		 console.log("Disconnected for " + error.reason + " with code " + error.code);
+	     })*/
+	     
+	     
+	     
+	 }
+	 
+	 function sendMessage(){
+	     console.log('dd')
+	     var message = $('#message')
+	     var text = message.val()
+	     if (group == undefined || message.val() == '') return
+	     console.log('dd')
+	     $.post('/messages/new',{
+		 'group_id' : group,
+		 'text' : text
+	     }, function(data){
+		 console.log(data)
+		 message.val('')
+		 
+		 var messagesBox = $('#messages')
+		 messagesBox.append('<div>'+data.user+': '+text+'</div>')
+		 
+	     });
+	 }
+	 
+	 var add_group = $("#add_group")
+	 var add_form = $("#add_form")
+	 add_group.click(function(){
+	     /**/
+	     if(add_form.css("display") == "none"){
+		 add_form.css("display", "block")
+		 add_group.html('-')
+	     } else {
+		 add_form.css("display", "none")
+		 add_group.html('+')
+	     }
+	     
+	 })
+	 
+	 $('#add_group_button').click(function(){
+	     var usernames = $('#usernames')
+	     var groupName = $('#groupName')
+	     
+	     var unames = usernames.val().split(",").map(function(x){
+		 return x.trim()
+	     })
+
+	     
+	     add_form.css("display", "none")
+	     add_group.html('+')
+	     
+	     $.post('/groups/new',{
+		 'alias' : groupName.val(),
+		 'users' : unames
+	     }, function(data){
+		 usernames.val('')
+		 groupName.val('')
+		 $.get('/groups', function(data){
+		     var group_list = $("#group_list")
+		     group_list.empty()
+		     data.forEach(function(x){
+			 group_list.append('<li><a href="#'+x.id+'">'+x.alias+'</a></li>')
+			 makeMessageLinks()
+		     })
+		 })
+	     });
+	 })
+
+	 	 
+	 $('#message_button').click(sendMessage)
+	 makeMessageLinks()
+	 //setWebSockets()
+     })
+     
+    </script>
+
+{% endblock %}
+
+{% block body %}
+    <style>
+     .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
+     .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
+    </style>
+    
+    <style>
+     html,body {
+	 height:100%;
+	 
+     }
+     .container {
+	 height:100%;
+     }
+     .main-row {
+	 margin-left:0;
+	 margin-right:0;
+     }
+     .fill {
+	 
+	 width:100%;
+	 height:100%;
+	 min-height:100%;
+	 
+     }
+     .sidebar
+     {
+	 background: #F0F0F0;
+	 height:100%;
+	 min-height:100%;
+	 overflow-y:scroll;
+	 padding:0;
+	 margin:0;
+     }
+     .main-content-area
+     {  
+	 height:100%;
+	 min-height:100%;
+	 
+     }
+     .main-content-area #messages{
+	 overflow-y:scroll;
+	 height:100%;
+	 padding-bottom:100px;
+	 margin-bottom:-100px;
+     }
+     .sidebar h3 {
+	 padding-left:10px;
+	 padding-top:7px;
+     }
+     #add_form {
+	 margin:10px
+     }
+     #group_list li{
+	 display:block;
+	 background-color:red;
+	 padding:7px;
+	 padding-left:15px;
+	 margin:0;
+     }
+     #group_list{
+	 padding:0;
+	 margin:0;
+     }
+    </style>
+    
+    
+<div class="row main-row fill">
+  <div class="col-sm-2 sidebar hidden-xs">
+    <h3>Dialogs</h3>
+    <a href="#" id="add_group">+</a>
+    <div id="add_form" style="display:none">
+	<div class="form-group">
+	    <label for="groupName">Alias:</label>
+	    <input type="text" class="form-control" id="groupName">
+	</div>
+	<div class="form-group">
+	    <label for="usernames">Usernames:</label>
+	    <input type="text" class="form-control" id="usernames">
+	</div>
+
+	<input type="submit" value="add"  class="btn" id="add_group_button">
+    </div>
+    <ul id="group_list">
+      
+      {% for group in groups %}
+      <li><a href="#{{ group.id }}">{{ group.alias|e }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col-sm-10 col-xs-12 main-content-area">
+      <div id="messages">
+	  
+      </div>
+
+      <div style="background-color:red; width:100%;height:100px;position:relative; padding:20px">
+	  <div class="form-group" style="width:200px; display: inline-block">
+	      
+	      <input type="text" class="form-control" id="message">
+	  </div>
+	  
+	  <input type="submit" value="add"  class="btn" id="message_button">
+      </div>
+  </div>
+  
+{% endblock %}
+
+
