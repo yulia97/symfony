@@ -61,12 +61,11 @@ class GroupsController extends Controller
 	
 	$alias = $request->request->get('alias');
 	$usernames = $request->request->get('users');
-
+	
 	if ($alias == null) $alias = 'd';
 	$group->setAlias($alias);
 	
 	$entityManager = $this->getDoctrine()->getManager();
-
 
 	foreach($usernames as $uname){
 	    $user2 = $entityManager->getRepository(User::class)->findBy(array('username' => $uname));
@@ -80,6 +79,7 @@ class GroupsController extends Controller
 	$entityManager->persist($group);
 	$entityManager->flush();
 	
+	$alias = 'dd';
 	return $this->json(["Result"=>"200 Ok",
 			    "alias"=>$alias]);
     }

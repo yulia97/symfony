@@ -15,11 +15,51 @@
      
      $(document).ready(function(){
 	 function showMessages(messages){
+	     console.log(messages)
 	     var messagesBox = $('#messages')
 	     messagesBox.empty()
-	     messages.forEach(function(x){
-		 messagesBox.append('<div>'+x.author+': '+x.text+'</div>')
+	     var reg = /(\.png)|(\.jpeg)|(\.gif)|(.jpg)$/
+
+	     
+	     messages.forEach(function(x, i){
+		 var images = []
+		 var other = []
+		 messagesBox.append('<div><a href="user/'+x.user_id+'">'+x.author+'</a>: '+x.text+'</div>')
+		 x.files.forEach(function(file){
+		     if (file.path.search(reg) != -1){
+			 images.push(file)
+		     } else {
+			 other.push(file)
+		     }
+		     //messagesBox.append('<div><a href="'+file.md5+'">'+file.origname+'</a></div>')
+		     
+		 });
+
+		 if (images.length){ 
+		     var carousel = $('<div id="demo-'+i+'" class="carousel slide" data-ride="carousel"></div>')
+		     var carInner = $('<div class="carousel-inner"></div>');
+		     images.forEach(function(image, i){
+			 //console.log(i)
+			 if (i != 0)
+			     carInner.append($('<div class="carousel-item"><img src="'+image.path+'" ></div>'))
+			 else
+			     carInner.append($('<div class="carousel-item active"><img src="'+image.path+'" ></div>'))
+		     })
+		     carousel.append(carInner);
+		     if (images.length != 1){
+			 carousel.append($('<a class="carousel-control-prev" href="#demo-'+i+'" data-slide="prev"><span class="carousel-control-prev-icon"></span> </a><a class="carousel-control-next" href="#demo-'+i+'" data-slide="next"><span class="carousel-control-next-icon"></span></a>'))
+		     }
+		     messagesBox.append(carousel);
+		 }
+
+		 other.forEach(function(file){
+		     messagesBox.append('<a href="'+file.path+'"><div class="card"><div class="card-body">'+file.origname+'</div></div></a>');
+		 })
 	     })
+	     
+	     
+	     
+	     messagesBox.scrollTop(messagesBox.prop('scrollHeight'))
 	     
 	 }
 	 
@@ -114,25 +154,58 @@
 	     }	     
 	 }
 	 
-	 function sendMessage(){
+	 function sendMessage(e){
+
+
 	     console.log('dd')
+	     e.preventDefault()
 	     var message = $('#message')
 	     var text = message.val()
 	     if (group == undefined || message.val() == '') return
+	     $('#message_button').attr("disabled", true);
 	     console.log('dd')
-	     $.post('/messages/new',{
-		 'group_id' : group,
-		 'text' : text
-	     }, function(data){
-		 console.log(data)
-		 message.val('')
-		 
-		 var messagesBox = $('#messages')
-		 messagesBox.append('<div>'+data.user+': '+text+'</div>')
-		 
+
+
+	     var formData = new FormData();
+     var fileContainer = $('#files')[0].files
+	     var dodo = false
+	     for(var i = 0; i < fileContainer.length; i++){
+		 formData.append('file-'+i, fileContainer[i]);	 
+	     }
+
+	     console.log('ff')
+	     //if dodo
+	     
+	     $.ajax({
+		 url: '/file',
+		 data: formData,
+		 processData: false,
+		 contentType: false,
+		 type: 'POST',
+		 success: function (fdata) {
+		     console.log('hasdfjlia');
+		     $.post('/messages/new',{
+			 'group_id' : group,
+			 'text' : text,
+			 'files' : fdata
+		     }, function(data){
+			 
+			 
+			 console.log(fdata)			 
+			 message.val('')
+			 var messagesBox = $('#messages')
+			 messagesBox.scrollTop(messagesBox.prop('scrollHeight'))
+			 $('#message_button').removeAttr("disabled");
+		     })
+		 }
 	     });
-	 }
-	 
+	     
+	     
+	     
+	     
+	    
+     }
+     
 	 var add_group = $("#add_group")
 	 var add_form = $("#add_form")
 	 add_group.click(function(){
@@ -163,6 +236,7 @@
 		 'alias' : groupName.val(),
 		 'users' : unames
 	     }, function(data){
+		 console.log(data)
 		 usernames.val('')
 		 groupName.val('')
 		 $.get('/groups', function(data){
@@ -233,8 +307,8 @@
      .main-content-area #messages{
 	 overflow-y:scroll;
 	 height:100%;
-	 padding-bottom:100px;
-	 margin-bottom:-100px;
+	 padding-bottom:200px;
+	 margin-bottom:-190px;
      }
      .sidebar h3 {
 	 padding-left:10px;
@@ -253,6 +327,26 @@
      #group_list{
 	 padding:0;
 	 margin:0;
+     }
+
+     
+     .carousel-inner img {
+	 width: 400px;
+	 height: 500px;
+	 object-fit: scale-down;
+	 
+     }
+
+     .carousel-inner {
+	 text-align:center;
+	 height: 500px;
+	 width:600px;
+     }
+     .carousel {
+	 margin:auto;
+	 background-color: #696969;
+	 height: 500px;
+	 width:600px;
      }
     </style>
     
@@ -285,14 +379,20 @@
 		
 	    </div>
 
-	    <div style="background-color:red; width:100%;height:100px;position:relative; padding:20px">
-		<div class="form-group" style="width:200px; display: inline-block">
-		    
+	    
+	    <div style="background-color:white;width:100%;height:160px;position:relative; padding:20px">
+		<div class="form-group" style="">    
 		    <input type="text" class="form-control" id="message">
+		    <input type="hidden" name="MAX_FILE_SIZE" value="30000" />
+
+		    <input type="file" class="form-control" id="files" multiple>
 		</div>
 		
 		<input type="submit" value="add"  class="btn" id="message_button">
 	    </div>
+	    
+
+	    
 	</div>
 	
 {% endblock %}

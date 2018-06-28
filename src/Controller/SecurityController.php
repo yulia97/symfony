@@ -9,8 +9,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
 
+
+use Symfony\Component\Form\FormError;
 use App\Form\UserType;
+
 use App\Entity\User;
+use App\Entity\UserInfo;
 
 
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
@@ -47,27 +51,36 @@ class SecurityController extends Controller
     {
         // 1) build the form
         $user = new User();
+	$userInfo = new UserInfo();
         $form = $this->createForm(UserType::class, $user);
-
+	$err = '';
         // 2) handle the submit (will only happen on POST)
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-
+	    $entityManager = $this->getDoctrine()->getManager();
+	    $alreadyUser = $entityManager->getRepository(\App\Entity\User::class)->findBy(array('username' => $user->getUsername()));
             // 3) Encode the password (you could also do this via Doctrine listener)
-            $password = $passwordEncoder->encodePassword($user, $user->getPlainPassword());
-            $user->setPassword($password);
 
-            // 4) save the User!
-            $entityManager = $this->getDoctrine()->getManager();
-            $entityManager->persist($user);
-            $entityManager->flush();
+	    if (!count($alreadyUser)){
+		$password = $passwordEncoder->encodePassword($user, $user->getPlainPassword());
+		$user->setPassword($password);
+		
+		$user->setUserInfo($userInfo);
+		// 4) save the User!
 
-            // ... do any other work - like sending them an email, etc
-            // maybe set a "flash" success message for the user
-
-            return $this->redirectToRoute('index');
+		$entityManager->persist($user);
+		$entityManager->persist($userInfo);
+		$entityManager->flush();
+		
+		// ... do any other work - like sending them an email, etc
+		// maybe set a "flash" success message for the user
+		
+		return $this->redirectToRoute('index');
+	    } else {
+		$form->get('username')->addError(new FormError('User exists'));
+	    }
         }
-
+	
         return $this->render(
             'registration/register.html.twig',
             array('form' => $form->createView())

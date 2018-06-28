@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use App\Entity\Group;
 use App\Entity\User;
 use App\Entity\Message;
+use App\Entity\Document;
 
 use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
@@ -32,9 +33,18 @@ class MessagesController extends Controller
 		$messages = $group->getMessages();
 		$g = [];
 		foreach($messages as $message){
+		    $files = $message->getDocuments();
+		    $f = [];
+		    foreach($files as $file){
+			$f[] = ['path' => $file->getFilename(),
+				'origname' => $file->getOriginalFilename()];
+		    }
+
 		    $g[] = ["id"=>$message->getId(),
 			    "text"=>$message->getText(),
-			    "author"=>$message->getAuthor()->getUsername()];
+			    "author"=>$message->getAuthor()->getUsername(),
+			    "user_id" => $message->getAuthor()->getId(),
+			    'files' => $f];
 		    
 		    
 		}
@@ -63,7 +73,10 @@ class MessagesController extends Controller
 	$user = $this->get('security.token_storage')->getToken()->getUser();
 	$group_id = $request->request->get('group_id');
 	$text = $request->request->get('text');
+	$files = $request->request->get('files');
 
+	//return $this->json(['a'=>var_export($files)]);
+	
 	$group = $entityManager->getRepository(Group::class)->findBy(array('id' => $group_id));
 	if (count($group) >= 1)
 	    $group = $group[0];
@@ -72,9 +85,22 @@ class MessagesController extends Controller
 				"err"=>"no such group"]);
 
 
+	//return $this->json(['f'=>$files]);
 	foreach ($group->getUsers() as $u){
 	    if ($user == $u){
 		$message = new Message();
+
+
+		if (!is_null($files))
+		    foreach($files as $file){
+			$alreadyFile = $entityManager->getRepository(\App\Entity\Document::class)->findBy(array('md5' => $file['md5']));
+			if (count($alreadyFile)){
+			    $alreadyFile[0]->addMessage($message);
+			    //$message->addDocument();
+			}
+		    }
+		
+		
 		$message->setAuthor($user);
 		$message->setGroupId($group);
 		$message->setText($text);
@@ -129,4 +155,3 @@ class MessagesController extends Controller
     }
 
 }
-

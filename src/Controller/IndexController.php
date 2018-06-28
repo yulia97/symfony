@@ -14,9 +14,9 @@ class IndexController extends Controller
     public function index()
     {
 
-	
+        	
 	if($this->get('security.authorization_checker')->isGranted('IS_AUTHENTICATED_FULLY') ){
-	     return $this->redirectToRoute('chat');
+	    return $this->redirectToRoute('chat');
 	}	
 
 	

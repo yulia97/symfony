@@ -21,7 +21,7 @@ class User implements UserInterface
     private $id;
 
     /**
-     * @ORM\Column(type="string", length=255)
+     * @ORM\Column(type="string", length=255, unique=true)
      */
     private $username;
 
@@ -46,10 +46,27 @@ class User implements UserInterface
      */
     private $messages;
 
+    /**
+     * @ORM\OneToMany(targetEntity="App\Entity\Like", mappedBy="liker", orphanRemoval=true)
+     */
+    private $likes;
+
+    /**
+     * @ORM\OneToMany(targetEntity="App\Entity\Like", mappedBy="liked", orphanRemoval=true)
+     */
+    private $likedBy;
+
+    /**
+     * @ORM\OneToOne(targetEntity="App\Entity\UserInfo", mappedBy="user_id", cascade={"persist", "remove"})
+     */
+    private $userInfo;
+
     public function __construct()
     {
         $this->groups = new ArrayCollection();
         $this->messages = new ArrayCollection();
+        $this->likes = new ArrayCollection();
+        $this->likedBy = new ArrayCollection();
     }
     
     public function getId()
@@ -165,6 +182,85 @@ class User implements UserInterface
             if ($message->getAuthor() === $this) {
                 $message->setAuthor(null);
             }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Like[]
+     */
+    public function getLikes(): Collection
+    {
+        return $this->likes;
+    }
+
+    public function addLike(Like $like): self
+    {
+        if (!$this->likes->contains($like)) {
+            $this->likes[] = $like;
+            $like->setLiker($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLike(Like $like): self
+    {
+        if ($this->likes->contains($like)) {
+            $this->likes->removeElement($like);
+            // set the owning side to null (unless already changed)
+            if ($like->getLiker() === $this) {
+                $like->setLiker(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection|Like[]
+     */
+    public function getLikedBy(): Collection
+    {
+        return $this->likedBy;
+    }
+
+    public function addLikedBy(Like $likedBy): self
+    {
+        if (!$this->likedBy->contains($likedBy)) {
+            $this->likedBy[] = $likedBy;
+            $likedBy->setLiked($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLikedBy(Like $likedBy): self
+    {
+        if ($this->likedBy->contains($likedBy)) {
+            $this->likedBy->removeElement($likedBy);
+            // set the owning side to null (unless already changed)
+            if ($likedBy->getLiked() === $this) {
+                $likedBy->setLiked(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getUserInfo(): ?UserInfo
+    {
+        return $this->userInfo;
+    }
+
+    public function setUserInfo(UserInfo $userInfo): self
+    {
+        $this->userInfo = $userInfo;
+
+        // set the owning side of the relation if necessary
+        if ($this !== $userInfo->getUserId()) {
+            $userInfo->setUserId($this);
         }
 
         return $this;
